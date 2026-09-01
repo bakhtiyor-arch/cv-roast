@@ -138,13 +138,13 @@ function Hero({ lang, onRoast, error }: Props) {
                 <Flame className="h-5 w-5 transition-transform group-hover:rotate-12" />
                 {tr.hero.roastMe}
               </button>
-              <button
+              {/* <button
                 onClick={() => onRoast(null)}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-secondary/50 px-6 py-3.5 font-semibold text-foreground transition-colors hover:bg-secondary"
               >
                 <FileText className="h-5 w-5" />
                 {tr.hero.tryDemo}
-              </button>
+              </button> */}
             </div>
             <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
               <ShieldCheck className="h-3.5 w-3.5 text-primary" />
@@ -354,10 +354,10 @@ function Footer({ lang }: { lang: Lang }) {
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
             <Flame className="h-4 w-4" />
           </span>
-          CVROAST<span className="-ml-1.5 text-primary">.UZ</span>
+          CV-ROAST<span className="-ml-1.5 text-primary">.UZ</span>
         </div>
         <p className="text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} CVROAST.UZ. {tr.footer.rights}
+          &copy; {new Date().getFullYear()} CV-ROAST.UZ. {tr.footer.rights}
         </p>
         <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground">
           <a href="#" className="transition-colors hover:text-foreground">

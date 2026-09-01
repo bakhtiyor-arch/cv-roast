@@ -2,7 +2,7 @@ import json
 import logging
 import re
 
-from groq import Groq
+from google import genai
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -42,10 +42,6 @@ Return EXACTLY this JSON structure:
   }
 }"""
 
-# .env format (no spaces or extra quotes):
-# GROQ_API_KEY=gsk_your_actual_key_here
-
-# Deterministic salary mapping by developer level (UZB/Tashkent market 2024-2025)
 SALARY_MAP = {
     "Intern":  {"usd": "$100 - $200",     "uzs": "1.3M - 2.6M UZS"},
     "Junior":  {"usd": "$300 - $500",     "uzs": "3.8M - 6.4M UZS"},
@@ -53,7 +49,6 @@ SALARY_MAP = {
     "Senior":  {"usd": "$1,500 - $2,500", "uzs": "19.3M - 32.2M UZS"},
 }
 
-# Intensity mapping by level (1-5 flame scale)
 LEVEL_INTENSITY = {
     "Intern": 2,
     "Junior": 3,
@@ -62,23 +57,14 @@ LEVEL_INTENSITY = {
 }
 
 
-def get_groq_client() -> Groq:
-    api_key = settings.GROQ_API_KEY
+def get_gemini_client():
+    api_key = settings.GEMINI_API_KEY
     if not api_key:
-        raise ValueError(
-            "GROQ_API_KEY is missing or invalid in server environment. "
-            "Create backend/.env with: GROQ_API_KEY=gsk_your_actual_key_here"
-        )
-    if not api_key.startswith("gsk_"):
-        raise ValueError(
-            "GROQ_API_KEY appears invalid — it should start with 'gsk_'. "
-            "Check your backend/.env file."
-        )
-    return Groq(api_key=api_key)
+        raise ValueError("GEMINI_API_KEY is missing. Set it in backend/.env")
+    return genai.Client(api_key=api_key)
 
 
 def _sanitize_json(raw: str) -> str:
-    """Best-effort fix for common LLM JSON errors."""
     text = raw.strip()
     text = re.sub(r"^```(?:json)?\s*\n?", "", text)
     text = re.sub(r"\n?```\s*$", "", text)
@@ -88,54 +74,58 @@ def _sanitize_json(raw: str) -> str:
 
 
 def _parse_percentage(s: str) -> float:
-    """Parse a percentage string like '85%' to 85.0."""
     match = re.search(r"(\d+(?:\.\d+)?)", s)
     return float(match.group(1)) if match else 0.0
 
 
 def _normalize_level(raw: str) -> str:
-    """Normalize developer level to one of the valid values."""
     normalized = raw.strip().lower()
     level_map = {
-        "intern": "Intern",
-        "junior": "Junior",
-        "middle": "Middle",
-        "mid": "Middle",
-        "senior": "Senior",
-        "sr": "Senior",
+        "intern": "Intern", "junior": "Junior", "middle": "Middle",
+        "mid": "Middle", "senior": "Senior", "sr": "Senior",
     }
     return level_map.get(normalized, "Junior")
 
 
 def _normalize_gender(raw: str) -> str:
-    """Normalize gender to 'boy' or 'girl'. Defaults to 'boy' if ambiguous."""
     normalized = raw.strip().lower()
     if normalized in ("girl", "female", "woman", "f"):
         return "girl"
     return "boy"
 
 
+def _sanitize_cv_text(text: str) -> str:
+    text = text.replace("\x00", "")
+    text = re.sub(r"[^\x00-\x7F\u0400-\u04FF\u00C0-\u024F\u1E00-\u1EFF\u2000-\u206F\n\r\t ]", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()[:10000]
+
+
 def analyze_cv(cv_text: str) -> dict:
-    client = get_groq_client()
-    model = settings.GROQ_MODEL
+    client = get_gemini_client()
+    model_name = settings.GEMINI_MODEL
+    safe_text = _sanitize_cv_text(cv_text)
+
+    prompt = f"{SYSTEM_PROMPT}\n\nHere is the CV text to roast:\n\n{safe_text}"
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Here is the CV text to roast:\n\n{cv_text}"},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.0,
-            max_tokens=2048,
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                temperature=0.0,
+                max_output_tokens=2048,
+                response_mime_type="application/json",
+            ),
         )
-        result_text = response.choices[0].message.content
+        result_text = response.text
     except Exception as e:
-        logger.error("Groq API error: %s", e)
+        logger.error("Gemini API error: %s", e)
         raise RuntimeError(f"AI analysis failed: {e}") from e
 
-    # Try parsing raw response first
+    if not result_text:
+        raise RuntimeError("Gemini returned an empty response.")
+
     try:
         raw_data = json.loads(result_text)
     except json.JSONDecodeError:
@@ -144,25 +134,17 @@ def analyze_cv(cv_text: str) -> dict:
         try:
             raw_data = json.loads(sanitized)
         except json.JSONDecodeError as e:
-            logger.error("Failed to parse Groq response as JSON: %s", e)
+            logger.error("Failed to parse Gemini response as JSON: %s", e)
             logger.error("Raw response (first 500 chars): %s", result_text[:500])
             raise RuntimeError("AI returned invalid JSON response. Please try again.") from e
 
-    # Extract and normalize developer level
     raw_level = raw_data.get("developer_level", "Junior")
     level = _normalize_level(raw_level)
-
-    # Extract and normalize gender
     raw_gender = raw_data.get("gender", "boy")
     gender = _normalize_gender(raw_gender)
-
-    # Deterministic salary from level
     salary = SALARY_MAP.get(level, SALARY_MAP["Junior"])
-
-    # Deterministic intensity from level
     intensity = LEVEL_INTENSITY.get(level, 3)
 
-    # Parse card_data metrics
     card_data = raw_data.get("card_data", {})
     overconfidence = _parse_percentage(card_data.get("overconfidence", "50%"))
     stackoverflow = _parse_percentage(card_data.get("stackoverflow", "50%"))

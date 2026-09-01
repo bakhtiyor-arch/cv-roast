@@ -44,7 +44,7 @@ export function Navbar({ theme, toggleTheme, lang, setLang, onLogoClick, view }:
               <Flame className="h-5 w-5" />
             </span>
             <span className="text-glow">
-              CVROAST<span className="text-primary">.UZ</span>
+              CV-ROAST<span className="text-primary">.UZ</span>
             </span>
           </button>
 
@@ -132,7 +132,7 @@ export function Navbar({ theme, toggleTheme, lang, setLang, onLogoClick, view }:
                 </a>
               ))}
               <a
-                href="https://t.me"
+                href="https://t.me/cvroast_bot"
                 target="_blank"
                 rel="noreferrer"
                 className="mt-1 flex items-center justify-center gap-1.5 rounded-lg bg-telegram px-3 py-2 text-sm font-semibold text-telegram-foreground"

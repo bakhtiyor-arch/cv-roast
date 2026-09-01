@@ -9,7 +9,7 @@ load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-dev-key-change-in-production")
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -59,16 +59,16 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip().strip("'").strip('"')
-GROQ_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
+# Gemini API settings
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip().strip("'").strip('"')
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
-# --- Startup diagnostic: masked API key preview ---
 _logger = logging.getLogger("roaster.startup")
-if GROQ_API_KEY:
-    masked = GROQ_API_KEY[:6] + "..." + GROQ_API_KEY[-4:] if len(GROQ_API_KEY) > 10 else "***"
-    _logger.warning("GROQ_API_KEY loaded: %s", masked)
+if GEMINI_API_KEY:
+    masked = GEMINI_API_KEY[:6] + "..." + GEMINI_API_KEY[-4:] if len(GEMINI_API_KEY) > 10 else "***"
+    _logger.warning("GEMINI_API_KEY loaded: %s", masked)
 else:
-    _logger.error("GROQ_API_KEY NOT FOUND in environment. Set it in backend/.env")
+    _logger.error("GEMINI_API_KEY NOT FOUND in environment. Set it in backend/.env")
 
 CV_FILE_MAX_SIZE_MB = int(os.getenv("CV_FILE_MAX_SIZE_MB", "5"))
 CV_FILE_MIN_TEXT_LENGTH = int(os.getenv("CV_FILE_MIN_TEXT_LENGTH", "50"))

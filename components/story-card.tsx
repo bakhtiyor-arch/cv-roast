@@ -353,13 +353,13 @@ export function StoryCard({ lang, result }: Props) {
           {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           {tr.results.downloadCard}
         </button>
-        <button
+        {/* <button
           onClick={handleTelegramShare}
           className="flex items-center justify-center gap-2 rounded-xl bg-telegram px-4 py-3 text-sm font-semibold text-telegram-foreground transition-transform hover:scale-[1.02]"
         >
           <Send className="h-4 w-4" />
           {tr.results.shareTelegram}
-        </button>
+        </button> */}
       </div>
     </div>
   )

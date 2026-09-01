@@ -16,7 +16,7 @@ const spaceGrotesk = Space_Grotesk({
 })
 
 export const metadata: Metadata = {
-  title: 'CVROAST.UZ — AI CV Roaster & Local Salary Check',
+  title: 'CV-ROAST.UZ — AI CV Roaster & Local Salary Check',
   description:
     'Yuklang, kulamiz va bozor qiymatingizni bilib olasiz! AI rezyumeingizni shavqatsiz tahlil qiladi va O\u2018zbekiston bozori maoshini hisoblaydi.',
   generator: 'v0.app',

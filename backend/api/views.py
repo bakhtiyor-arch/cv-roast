@@ -1,13 +1,18 @@
+import logging
+
+from django.conf import settings
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
 from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
-from django.conf import settings
-
 from .pdf_extractor import extract_text_from_pdf
-from .groq_client import analyze_cv, DEMO_RESPONSE
+from .gemini_client import analyze_cv, DEMO_RESPONSE
+
+logger = logging.getLogger(__name__)
 
 
 def custom_exception_handler(exc, context):
@@ -22,6 +27,7 @@ def custom_exception_handler(exc, context):
 
 @api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
+@ratelimit(key="ip", rate="5/m", method="POST", block=True)
 def roast_cv(request):
     demo = request.query_params.get("demo", "false").lower() == "true"
 
@@ -55,10 +61,10 @@ def roast_cv(request):
         pdf_bytes = cv_file.read()
         extracted_text = extract_text_from_pdf(pdf_bytes)
     except Exception as e:
+        logger.warning("PDF extraction failed: %s", e)
         return Response(
             {
                 "error": "Failed to extract text from the PDF. Please upload a text-readable PDF.",
-                "detail": str(e),
                 "success": False,
             },
             status=status.HTTP_422_UNPROCESSABLE_ENTITY,
